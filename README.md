@@ -1,1 +1,1 @@
-# SplineInterpolation
+# Spline Interpolation
