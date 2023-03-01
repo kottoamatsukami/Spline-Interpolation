@@ -14,6 +14,7 @@ void calc_coefficients(
         double d[n-1]
         );
 
+
 double calc_point_value(
         double x0,
         int n,

@@ -5,3 +5,4 @@ set(CMAKE_C_STANDARD 11)
 
 add_executable(Spline_Interpolation
         spline_interpolation.c subfuncs.h subfuncs.c)
+

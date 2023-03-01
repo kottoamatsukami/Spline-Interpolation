@@ -8,7 +8,6 @@
 #define EPSILON 1e-3
 #define DELTA 1e-3
 
-
 void greeting(){
     printf(" _____       _ _                                               \n");
     printf("/  ___|     | (_)                                              \n");

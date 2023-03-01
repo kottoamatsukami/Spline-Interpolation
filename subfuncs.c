@@ -151,4 +151,3 @@ double calc_point_value(
         }
     }
 }
-
