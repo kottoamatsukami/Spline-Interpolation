@@ -28,3 +28,9 @@ void free_spline(Spline *spline);
 double MSE(double t, double c, Spline spline_TX, Spline spline_TY, Spline spline_CX, Spline spline_CY);
 
 double MODULE(double t, double c, Spline spline_TX, Spline spline_TY, Spline spline_CX, Spline spline_CY);
+
+/*
+ * ----------------------------------------------
+ * Last modified at 01.03.2023 by Kottoamatsukami
+ * ----------------------------------------------
+ */

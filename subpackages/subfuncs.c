@@ -206,3 +206,9 @@ double MODULE(double t, double c, Spline spline_TX, Spline spline_TY, Spline spl
             fabs(calc_point_value(spline_TY, t) - calc_point_value(spline_CY, c))
             );
 }
+
+/*
+ * ----------------------------------------------
+ * Last modified at 01.03.2023 by Kottoamatsukami
+ * ----------------------------------------------
+ */

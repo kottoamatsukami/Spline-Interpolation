@@ -152,3 +152,9 @@ void filepath_request(int is_input)
     }
     puts(ECHO_ARROW);
 }
+
+/*
+ * ----------------------------------------------
+ * Last modified at 01.03.2023 by Kottoamatsukami
+ * ----------------------------------------------
+ */

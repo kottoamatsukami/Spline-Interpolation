@@ -28,6 +28,7 @@
 #define ECHO_MSG_OUTPUT_FILE_REQ "Specify the path to the file for output:"
 #define ECHO_MSG_ERROR_FILE "Error: Cannot open file!"
 
+
 /*
  * ----------------------------------------------
  * Last modified at 01.03.2023 by Kottoamatsukami

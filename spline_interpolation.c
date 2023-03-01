@@ -405,6 +405,7 @@ int main(){
                                             (g1t - g2c)*(g1t - g2c)
                                     )
                             );
+
                             if ((fabs(g1t - g2c) < EPSILON) && (fabs(f1t - f2c) < EPSILON)){
                                 distance = 0;
                                 printf("Intersection: t:=%lf c:=%lf -> (%lf %lf)  (%lf %lf)\n", t, c, f1t, g1t, f2c, g2c);
