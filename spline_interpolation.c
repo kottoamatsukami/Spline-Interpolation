@@ -1,249 +1,181 @@
-#include<stdlib.h>
-#include<time.h>
-#include<stdio.h>
-#include<math.h>
-#include "subfuncs.h"
-
-#define MAX_FILENAME_LENGTH 256
-#define MAX_ITERATIONS 10000
-// Settings of gradient descent
-#define ALPHA 0.01                    // gradient coefficient
-#define SHEDULER_STEP 1000            // step after which ALPHA is reduced in SHEDULER_COEFFICIENT times
-#define SHEDULER_COEFFICIENT 2        // clearly
-#define OMEGA 999999                  // big number
-// Post gradient descent algorithm settings
-#define NEIGHBOUR 0.5                   // the vicinity of the parameter to find the intersection point
-#define MICRO 0.0001                  // step of this algorithm
-#define EPSILON 0.002                 // difference between the values at which we consider them to be equal
-
-
-void greeting(){
-    printf(" _____       _ _                                               \n");
-    printf("/  ___|     | (_)                                              \n");
-    printf("\\ `--. _ __ | |_ _ __   ___                                    \n");
-    printf(" `--. \\ '_ \\| | | '_ \\ / _ \\                                   \n");
-    printf("/\\__/ / |_) | | | | | |  __/                                   \n");
-    printf("\\____/| .__/|_|_|_| |_|\\___|                                   \n");
-    printf("      | |                                                      \n");
-    printf("      |_|                                                      \n");
-    printf(" _____      _                        _       _   _             \n");
-    printf("|_   _|    | |                      | |     | | (_)            \n");
-    printf("  | | _ __ | |_ ___ _ __ _ __   ___ | | __ _| |_ _  ___  _ __  \n");
-    printf("  | || '_ \\| __/ _ \\ '__| '_ \\ / _ \\| |/ _` | __| |/ _ \\| '_ \\ \n");
-    printf(" _| || | | | ||  __/ |  | |_) | (_) | | (_| | |_| | (_) | | | |\n");
-    printf(" \\___/_| |_|\\__\\___|_|  | .__/ \\___/|_|\\__,_|\\__|_|\\___/|_| |_|\n");
-    printf("                        | |                                    \n");
-    printf("                        |_|                                    \n");
-}
-
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "subpackages/echo.h"
+#include "subpackages/subfuncs.h"
+#include "subpackages/constants.h"
 
 
 int main(){
-    srand(time(NULL));
     // Start echo
     while (1){
-        // greeting
+        /*
+         * ==============-<SCRIPT MENU>-==============
+         */
         greeting();
-        // Call script menu
-        int menu_carrier;
-        printf("1) interpolate data\n");
-        printf("2) find the intersection or distance of two splines\n");
-        printf("3) credits\n");
-        printf("0) exit\n");
-        printf("echo: ");
-        scanf("%d", &menu_carrier);
-
-        // User error handler
-        if ((menu_carrier > 3) || (menu_carrier < 0)){
-            printf("\nMissed the key, don't upset please!\n");
-        }
+        int user_choice = main_menu();
 
         // Exit handler
-        else if (menu_carrier == 0){
-            printf("\nBye!");
-            return 0;
+        if (user_choice == 0)
+        {
+            exit_handler();
         }
 
         // Interpolate data handler
-        else if (menu_carrier == 1) {
+        if (user_choice == 1)
+        {
+            // Determine the mode for spline (normalized)
+            int normalized;
+            user_choice = first_submenu();
+            if (user_choice == 0)
+            {
+                break;
+            }
+            if (user_choice == 1)
+            {
+                normalized = 1;
+            }
+            if (user_choice == 2)
+            {
+                normalized = 0;
+            }
+
+            /*
+             * =============-<File processing>-=============
+             *
+             */
             char FileName[MAX_FILENAME_LENGTH];
-            printf("\nSpecify the path to the file\n");
-            printf("echo: ");
+            filepath_request(1);
             scanf("%s", &FileName);
             FILE *target_file = fopen(FileName, "r");
-            if (!target_file)
-            {
-                printf("Error: Cannot open your file!\n");
-            }
-            printf("\n");
-            int n;
-            double gamma_1, gamma_2;
+            if (!target_file){puts(ECHO_MSG_ERROR_FILE);continue;}
+
+            int n;                   // number of dots
+            double gamma_1, gamma_2; // value of the second derivatives at the ends of the spline
             fscanf(target_file, "%d %lf %lf", &n, &gamma_1, &gamma_2);
             double x[n], y[n], index[n];
             for (int i = 0; i < n;i++)
             {
                 fscanf(target_file, "%lf %lf", &x[i], &y[i]);
-                index[i] = i;
+                if (normalized){index[i] = (double)i/n;}
+                else           {index[i] = i;}
             }
+            if (normalized) {index[n-1]=1;}
             fclose(target_file);
 
-            // x
-            double a_x[n-1], b_x[n-1], c_x[n-1], d_x[n-1];
-            calc_coefficients(
-                    n,
-                    gamma_1,
-                    gamma_2,
-                    index,
-                    x,
-                    a_x,
-                    b_x,
-                    c_x,
-                    d_x);
+            /*
+             * =============-< Spline Calculation >-=============
+             *
+             */
+            Spline splineX;
+            initialize_spline(&splineX, n, index, x, gamma_1, gamma_2);
+            calc_coefficients(&splineX);
 
-            //y
-            double a_y[n-1], b_y[n-1], c_y[n-1], d_y[n-1];
-            calc_coefficients(
-                    n,
-                    gamma_1,
-                    gamma_2,
-                    index,
-                    y,
-                    a_y,
-                    b_y,
-                    c_y,
-                    d_y);
 
+            Spline splineY;
+            initialize_spline(&splineY, n, index, y, gamma_1, gamma_2);
+            calc_coefficients(&splineY);
+
+            /*
+             * ============-< NEXT MENU >-============
+             *
+             * */
             while (1){
-                printf("\n");
-                printf("1) Point by point\n");
-                printf("2) Load file\n");
-                printf("0) exit\n");
-                printf("echo: ");
-                scanf("%d", &menu_carrier);
+                user_choice = second_submenu();
 
-                // User error handler
-                if ((menu_carrier > 2) || (menu_carrier < 0)){
-                    printf("\nMissed the key, don't upset please!\n");
-                }
-
-                // Exit handler
-                else if (menu_carrier == 0){
+                // Come back handler
+                if (user_choice == 0){
                     break;
                 }
 
-                // Interpolate points
-                else if (menu_carrier == 1){
-                    printf("Hint: put 0.123456789666 to come back\n");
-                    double x0;
-                    double point_x;
-                    double point_y;
+                /*
+                 * ============-< Point by point interpolation >-============
+                 *
+                 * */
+                if (user_choice == 1){
+                    double t;
+                    puts("Hint: put -1 to come back");
 
                     // New echo
                     while (1){
-                        // take argument and calculate point
-                        printf("echo <Argument in [%lf, %lf]>: ", index[0], index[n-1]);
-                        scanf("%lf", &x0);
-                        if (x0 == 0.123456789666){printf("\n"); break;}
-                        printf("\nAprox: %lf %lf\n",
-                               calc_point_value(
-                                       x0,
-                                       n,
-                                       index,
-                                       a_x,
-                                       b_x,
-                                       c_x,
-                                       d_x
-                                       ),
-                               calc_point_value(
-                                       x0,
-                                       n,
-                                       index,
-                                       a_y,
-                                       b_y,
-                                       c_y,
-                                       d_y
-                                       )
-                               );
+                        printf("echo <Argument in [%lf, %lf]>:\n", index[0], index[n-1]);
+                        scanf("%lf", &t);
+                        if (t == -1){printf("\n"); break;}
+                        printf("Approximately: %lf %lf\n",
+                               calc_point_value(splineX, t),
+                               calc_point_value(splineY, t)
+                        );
                     }
                 }
 
-                // Interpolate points in file
-                else if (menu_carrier == 2){
+                /*
+                * ============-< File interpolation >-============
+                *
+                * */
+                else if (user_choice == 2){
                     char FileName[MAX_FILENAME_LENGTH];
-                    printf("\nSpecify the path to the file for input: ");
-                    printf("\necho: ");
+
+                    /*
+                     * --------------------------------
+                     * Input file
+                     * --------------------------------
+                     * */
+                    filepath_request(1);
                     scanf("%s", &FileName);
                     FILE *input_file = fopen(FileName, "r");
-                    if (!input_file)
-                    {
-                        printf("Error: Cannot open your file!\n");
-                    }
+                    if (!input_file){puts(ECHO_MSG_ERROR_FILE);continue;}
 
-                    printf("\nSpecify the path to the file for output: ");
-                    printf("\necho: ");
+                    /*
+                     * --------------------------------
+                     * Output file
+                     * --------------------------------
+                     * */
+                    filepath_request(0);
                     scanf("%s", &FileName);
                     FILE *output_file = fopen(FileName, "w");
-                    if (!output_file)
-                    {
-                        printf("Error: Cannot create output file!\n");
-                    }
+                    if (!output_file){puts(ECHO_MSG_ERROR_FILE);continue;}
 
-                    int N;
-                    double t;
+                    /*
+                     * --------------------------------
+                     * Calculation
+                     * --------------------------------
+                     * */
+                    int N;        // number of dots in file
+                    double t;     // argument
                     fscanf(input_file, "%d", &N);
                     for (int j=0;j<N;j++)
                     {
                         fscanf(input_file, "%lf", &t);
                         fprintf(output_file,"%lf %lf\n",
-                               calc_point_value(
-                                       t,
-                                       n,
-                                       index,
-                                       a_x,
-                                       b_x,
-                                       c_x,
-                                       d_x
-                               ),
-                               calc_point_value(
-                                       t,
-                                       n,
-                                       index,
-                                       a_y,
-                                       b_y,
-                                       c_y,
-                                       d_y
-                               )
+                               calc_point_value(splineX, t),
+                               calc_point_value(splineY, t)
                         );
                     }
                     fclose(input_file);
                     fclose(output_file);
-                }
-                else{
-                    printf("\nI don`t know how you got here :(. Maybe i should continue...\n");
-                    continue;
+                    puts("Successfully!");
                 }
             }
-
-
-
-
         }
 
-        // Second submenu
-        else if (menu_carrier == 2){
-            printf("\n");
-            char FileName[MAX_FILENAME_LENGTH];
+        // Third submenu
+        else if (user_choice == 2){
+            // Determine the mode for spline (normalized)
+            int normalized;
+            user_choice = first_submenu();
+            if (user_choice == 0){break;}
+            if (user_choice == 1){normalized=1;}
+            if (user_choice == 2){normalized = 0;}
 
-            // Calculate coefficients for first spline
-            printf("\nSpecify the path to the dots for first spline\n");
-            printf("echo: ");
+            char FileName[MAX_FILENAME_LENGTH];
+            /*
+             *  Calculate coefficients for first spline
+             *
+             * */
+            filepath_request(1);
             scanf("%s", &FileName);
             FILE *first_spline = fopen(FileName, "r");
-            if (!first_spline)
-            {
-                printf("Error: Cannot open your file!\n");
-            }
-            printf("\n");
+            if (!first_spline){puts(ECHO_MSG_ERROR_FILE);continue;}
 
             int first_n;
             double first_gamma_1, first_gamma_2;
@@ -252,186 +184,164 @@ int main(){
             for (int i = 0; i < first_n;i++)
             {
                 fscanf(first_spline, "%lf %lf", &first_x[i], &first_y[i]);
-                first_index[i] = i;
+                if (normalized){first_index[i] = (double)i/first_n;}
+                else           {first_index[i] = i;}
             }
+            if (normalized) {first_index[first_n-1]=1;}
             fclose(first_spline);
-            // x
-            double first_a_x[first_n-1], first_b_x[first_n-1], first_c_x[first_n-1], first_d_x[first_n-1];
-            calc_coefficients(
-                    first_n,
-                    first_gamma_1,
-                    first_gamma_2,
-                    first_index,
-                    first_x,
-                    first_a_x,
-                    first_b_x,
-                    first_c_x,
-                    first_d_x);
 
-            //y
-            double first_a_y[first_n-1], first_b_y[first_n-1], first_c_y[first_n-1], first_d_y[first_n-1];
-            calc_coefficients(
-                    first_n,
-                    first_gamma_1,
-                    first_gamma_2,
-                    first_index,
-                    first_y,
-                    first_a_y,
-                    first_b_y,
-                    first_c_y,
-                    first_d_y);
+            Spline firstX;
+            initialize_spline(&firstX, first_n, first_index, first_x, first_gamma_1, first_gamma_2);
+            calc_coefficients(&firstX);
 
-            // Calculate coefficients for second spline
-            printf("\nSpecify the path to the dots for second spline\n");
-            printf("echo: ");
+            Spline firstY;
+            initialize_spline(&firstY, first_n, first_index, first_y, first_gamma_1, first_gamma_2);
+            calc_coefficients(&firstY);
+
+            /*
+             *  Calculate coefficients for second spline
+             *
+             * */
+            filepath_request(1);
             scanf("%s", &FileName);
             FILE *second_spline = fopen(FileName, "r");
-            if (!second_spline)
-            {
-                printf("Error: Cannot open your file!\n");
+            if (!second_spline){
+                puts(ECHO_MSG_ERROR_FILE);
+                free_spline(&firstX);
+                free_spline(&firstY);
+                continue;
             }
-            printf("\n");
 
             int second_n;
             double second_gamma_1, second_gamma_2;
             fscanf(second_spline, "%d %lf %lf", &second_n, &second_gamma_1, &second_gamma_2);
             double second_x[second_n], second_y[second_n], second_index[second_n];
-            for (int i = 0; i < second_n; i++)
+            for (int i = 0; i < second_n;i++)
             {
                 fscanf(second_spline, "%lf %lf", &second_x[i], &second_y[i]);
-                second_index[i] = i;
+                if (normalized){second_index[i] = (double)i/second_n;}
+                else           {second_index[i] = i;}
             }
+            if (normalized) {second_index[second_n-1]=1;}
             fclose(second_spline);
-            // x
-            double second_a_x[second_n-1], second_b_x[second_n-1], second_c_x[second_n-1], second_d_x[second_n-1];
-            calc_coefficients(
-                    second_n,
-                    second_gamma_1,
-                    second_gamma_2,
-                    second_index,
-                    second_x,
-                    second_a_x,
-                    second_b_x,
-                    second_c_x,
-                    second_d_x);
 
+            Spline secondX;
+            initialize_spline(&secondX, second_n, second_index, second_x, second_gamma_1, second_gamma_2);
+            calc_coefficients(&secondX);
 
-            //y
-            double second_a_y[second_n-1], second_b_y[second_n-1], second_c_y[second_n-1],second_d_y[second_n-1];
-            calc_coefficients(
-                    second_n,
-                    second_gamma_1,
-                    second_gamma_2,
-                    second_index,
-                    second_y,
-                    second_a_y,
-                    second_b_y,
-                    second_c_y,
-                    second_d_y);
+            Spline secondY;
+            initialize_spline(&secondY, second_n, second_index, second_y, second_gamma_1, second_gamma_2);
+            calc_coefficients(&secondY);
 
-            // start new echo
+            // Third submenu
             while (1) {
-                printf("\n");
-                printf("1) start\n");
-                printf("0) exit\n");
-                printf("echo: ");
-                scanf("%d", &menu_carrier);
-
-                if ((menu_carrier > 1) || (menu_carrier < 0)) {
-                    printf("\nMissed the key, don't upset please!\n");
-                } else if (menu_carrier == 0) {
+                user_choice = third_submenu();
+                if (user_choice == 0) {
                     break;
-                } else if (menu_carrier == 1) {
-                    // Distance between splines
+                }
+                if (user_choice == 1) {
+                    /*
+                     *  Gradient Descent
+                     *
+                     * */
 
-                    // Gradient Descent
-                    // F(t, c) = |f1t - f2c| + |g1t - g2c|
                     double f1t, g1t, f2c, g2c;
-                    double t=first_n/2.0, c=second_n/2.0;
+                    double t=first_index[first_n/2], c=second_index[second_n/2], min_t=OMEGA, min_c=OMEGA;
                     double distance=OMEGA;
-                    double gradient_t, gradient_c;
-                    double function_value=0, last_function_value=OMEGA;
-                    double alpha = ALPHA;
+                    double gradient_t, gradient_c, last_gradient_t=0, last_gradient_c=0;
+                    double function_value=0, last_function_value=OMEGA, min_function_value=OMEGA;
+                    double alpha = GRADIENT_COEFFICIENT, beta = ACCUMULATED_SPEED_COEFFICIENT;
+                    int hot_stops = 0;
+
+                    user_choice = fourth_submenu();
+                    if (user_choice == 0){break;}
+
                     for (int i=1; i < MAX_ITERATIONS+1; i++){
-                        f1t = calc_point_value(
-                                t,
-                                first_n,
-                                first_index,
-                                first_a_x,
-                                first_b_x,
-                                first_c_x,
-                                first_d_x
-                        );
-                        g1t = calc_point_value(
-                                t,
-                                first_n,
-                                first_index,
-                                first_a_y,
-                                first_b_y,
-                                first_c_y,
-                                first_d_y
-                        );
-                        f2c = calc_point_value(
-                                c,
-                                second_n,
-                                second_index,
-                                second_a_x,
-                                second_b_x,
-                                second_c_x,
-                                second_d_x
-                        );
-                        g2c = calc_point_value(
-                                c,
-                                second_n,
-                                second_index,
-                                second_a_y,
-                                second_b_y,
-                                second_c_y,
-                                second_d_y
-                        );
+                        if (user_choice == 1){
+                            /*
+                             * MSE
+                             */
+                            gradient_t = (
+                                    MSE(t+OMICRON, t, firstX, firstY, secondX, secondY)
+                                    -
+                                    MSE(t, t, firstX, firstY, secondX, secondY)
+                            )/OMICRON;
 
-                        gradient_t = (
-                                (f1t - f2c + g1t - g2c)
-                                /
-                                fabs(f1t - f2c)
-                                );
+                            gradient_c = (
+                                     MSE(t, t+OMICRON, firstX, firstY, secondX, secondY)
+                                     -
+                                     MSE(t, t, firstX, firstY, secondX, secondY)
+                            )/OMICRON;
 
-                        gradient_c = (
-                                (f2c - f1t +  g2c - g1t)
-                                /
-                                fabs(g1t - g2c)
-                                );
-                        t += alpha * gradient_t;
-                        c += alpha * gradient_c;
+                            f1t = calc_point_value(firstX, t);
+                            g1t = calc_point_value(firstY, t);
+                            f2c = calc_point_value(secondX, c);
+                            g2c = calc_point_value(secondY, c);
+
+                            function_value = (
+                                    (f1t - f2c)*(f1t - f2c)
+                                    +
+                                    (g1t - g2c)*(g1t - g2c)
+                            );
+                        }
+                        if (user_choice == 2){
+                            /*
+                             * Module
+                             * */
+                            /*
+                             * MSE
+                             */
+                            gradient_t = (
+                                    MSE(t+OMICRON, c, firstX, firstY, secondX, secondY)
+                                    -
+                                    MSE(t, c, firstX, firstY, secondX, secondY)
+                            )/OMICRON;
+
+                            gradient_c = (
+                                    MODULE(t, c+OMICRON, firstX, firstY, secondX, secondY)
+                                    -
+                                    MODULE(t, c, firstX, firstY, secondX, secondY)
+                            )/OMICRON;
+
+                            f1t = calc_point_value(firstX, t);
+                            g1t = calc_point_value(firstY, t);
+                            f2c = calc_point_value(secondX, c);
+                            g2c = calc_point_value(secondY, c);
+
+                            function_value = (
+                                    (f1t - f2c)*(f1t - f2c)
+                                    +
+                                    (g1t - g2c)*(g1t - g2c)
+                            );
+                        }
+
+                        t = t - alpha * (beta*last_gradient_t + (1-beta)*gradient_t);
+                        c = c - alpha * (beta*last_gradient_c + (1-beta)*gradient_c);
+
                         // Projection on set
                         // t
-                        if (t < 0){
-                            t = 0;
-                        }
-                        else if (t > first_index[first_n-1]){
-                            t = first_index[first_n-1];
-                        }
+                        if (t < 0){t = 0;}
+                        else if (t > first_index[first_n-1]){t = first_index[first_n-1];}
                         // c
-                        if (c < 0){
-                            c = 0;
-                        }
-                        else if (c > second_index[second_n-1]){
-                            c = second_index[second_n-1];
-                        }
-
-                        // Calc func value
-                        // F(t, c) = |f1t - f2c| + |g1t - g2c|
-                        function_value = (
-                                fabs(f1t - f2c)
-                                +
-                                fabs(g1t - g2c)
-                                         );
+                        if (c < 0){c = 0;}
+                        else if (c > second_index[second_n-1]){c = second_index[second_n-1];}
                         // Hot stop
-                        if (function_value>last_function_value){
-                            printf("(f1(t):=%lf >< g1(t):=%lf)   (f2(t):=%lf >< g2(t):=%lf)\n", f1t, g1t, f2c, g2c);
-                            break;
+                        if (function_value>=last_function_value){
+                            hot_stops++;
+                            if (EARLY_STOP || (hot_stops >= SKIP_COUNT)) {
+                                printf("(f1(t):=%lf >< g1(t):=%lf)   (f2(t):=%lf >< g2(t):=%lf)\n", f1t, g1t, f2c, g2c);
+                                break;
+                            }
                         }
-                        printf("Iteration[%d]: t:=%lf c:=%lf function(t, c):=%lf ><Scheduler: alpha=%lf\n", i, t, c, function_value, alpha);
+                        if (function_value <= min_function_value){
+                            min_function_value = function_value;
+                            min_t = t;
+                            min_c = c;
+                        }
+                        else{
+                            hot_stops=0;
+                        }
+                        printf("Iteration[%d]: t:=%lf c:=%lf F(t, c):=%lf >< cur_alpha:=%lf hot_stops:=%d\n", i, t, c, function_value, alpha, hot_stops);
 
 
                         // Scheduler
@@ -439,49 +349,18 @@ int main(){
                             alpha /= SHEDULER_COEFFICIENT;
                         }
 
-
                         last_function_value = function_value;
+                        last_gradient_t = gradient_t;
+                        last_gradient_c = gradient_c;
                     }
-
+                    printf("min F(t, c):=%lf t:=%lf c:=%lf\n", min_function_value, min_t, min_c);
                     // Post gradient descent algorithm
-                    for (double new_t = fmax(0, t-NEIGHBOUR); new_t<fmin(first_index[first_n-1],t+NEIGHBOUR); new_t+=MICRO){
-                        f1t = calc_point_value(
-                                new_t,
-                                first_n,
-                                first_index,
-                                first_a_x,
-                                first_b_x,
-                                first_c_x,
-                                first_d_x
-                        );
-                        g1t = calc_point_value(
-                                new_t,
-                                first_n,
-                                first_index,
-                                first_a_y,
-                                first_b_y,
-                                first_c_y,
-                                first_d_y
-                        );
-                        for (double new_c = fmax(0, c-NEIGHBOUR); new_c<fmin(second_index[second_n-1],c+NEIGHBOUR); new_c+=MICRO){
-                            f2c = calc_point_value(
-                                    new_c,
-                                    second_n,
-                                    second_index,
-                                    second_a_x,
-                                    second_b_x,
-                                    second_c_x,
-                                    second_d_x
-                            );
-                            g2c = calc_point_value(
-                                    new_c,
-                                    second_n,
-                                    second_index,
-                                    second_a_y,
-                                    second_b_y,
-                                    second_c_y,
-                                    second_d_y
-                            );
+                    for (double new_t = fmax(0, min_t-NEIGHBOUR); new_t<fmin(first_index[first_n-1],min_t+NEIGHBOUR); new_t+=MICRO){
+                        f1t = calc_point_value(firstX, new_t);
+                        g1t = calc_point_value(firstY, new_t);
+                        for (double new_c = fmax(0, min_c-NEIGHBOUR); new_c<fmin(second_index[second_n-1],min_c+NEIGHBOUR); new_c+=MICRO){
+                            f2c = calc_point_value(secondX, new_c);
+                            g2c = calc_point_value(secondY, new_c);
                             distance = fmin(
                                     distance,
                                     sqrt(
@@ -489,39 +368,107 @@ int main(){
                                             (g1t - g2c)*(g1t - g2c)
                                     )
                             );
-                            if (fabs(g1t - g2c) < EPSILON){
-                                if (fabs(f1t - f2c) < EPSILON){
-                                    distance = 0;
-                                    printf("Intersection: t:=%lf c:=%lf -> (%lf %lf)  (%lf %lf)\n", t, c, f1t, g1t, f2c, g2c);
-                                    break;
-                                }
-                            }
-                            if (distance == 0){
+                            if ((fabs(g1t - g2c) < EPSILON) && (fabs(f1t - f2c) < EPSILON)){
+                                distance = 0;
+                                printf("Intersection: t:=%lf c:=%lf -> (%lf %lf)  (%lf %lf)\n", t, c, f1t, g1t, f2c, g2c);
                                 break;
                             }
                         }
+
+                        if (distance == 0){
+                            break;
+                        }
                     }
-
-
                     if (distance != 0){
                         printf("Splines do not overlap, min distance: %lf\n", distance);
                     }
                 }
-                else {
-                    printf("\nI don`t know how you got here :(. Maybe i should continue...\n");
-                    continue;
+
+                else if (user_choice == 2){
+                    /*
+                     *  Parameter search
+                     *
+                     * */
+                    puts("Starting, please wait...");
+                    double f1t, g1t, f2c, g2c;
+                    double distance=OMEGA;
+                    for (double t = 0; t<first_index[first_n-1]; t+=MICRO){
+                        f1t = calc_point_value(firstX, t);
+                        g1t = calc_point_value(firstY, t);
+                        for (double c = 0; c<second_index[second_n-1]; c+=MICRO){
+                            f2c = calc_point_value(secondX, c);
+                            g2c = calc_point_value(secondY, c);
+                            distance = fmin(
+                                    distance,
+                                    sqrt(
+                                            (f1t - f2c)*(f1t - f2c) +
+                                            (g1t - g2c)*(g1t - g2c)
+                                    )
+                            );
+                            if ((fabs(g1t - g2c) < EPSILON) && (fabs(f1t - f2c) < EPSILON)){
+                                distance = 0;
+                                printf("Intersection: t:=%lf c:=%lf -> (%lf %lf)  (%lf %lf)\n", t, c, f1t, g1t, f2c, g2c);
+                                break;
+                            }
+                        }
+
+                        if (distance == 0){
+                            break;
+                        }
+                    }
+                    if (distance != 0){
+                        printf("Splines do not overlap, min distance: %lf\n", distance);
+                    }
                 }
             }
         }
 
-        // халява
-        else if (menu_carrier == 3){
-            printf("\n");
-            printf("https://github.com/kottoamatsukami\n");
+        // Linespace gen
+        else if (user_choice == 3)
+        {
+            char FileName[MAX_FILENAME_LENGTH];
+            filepath_request(0);
+            scanf("%s", &FileName);
+            FILE *output_file = fopen(FileName, "w");
+            if (!output_file){puts(ECHO_MSG_ERROR_FILE);}
+
+            double a, b, step;
+            int count;
+            puts("Enter start point");
+            scanf("%lf", &a);
+            puts("Enter end point:");
+            scanf("%lf", &b);
+            puts("Enter dot count:");
+            scanf("%d", &count);
+            step = (b - a) / (double)(count-1);
+            int iterations = 0;
+            if (a >= b){
+                return -1;
+            }
+            if (step <= 0){
+                return -2;
+            }
+
+            fprintf(output_file, "%d\n", count);
+            while (a <= b){
+                fprintf(output_file, "%lf\n", a);
+                a += step;
+                iterations += 1;
+            }
+            if (iterations != count){
+                fprintf(output_file, "%lf\n", b);
+            }
+            fclose(output_file);
+            puts("Completed!");
         }
-        else{
-            printf("\nI don`t know how you got here :(. Maybe i should continue...\n");
-            continue;
+
+        else if (user_choice == 4){
+            /*
+             * ------------------------
+             * Credits
+             * ------------------------
+             * */
+            puts("https://github.com/kottoamatsukami");
         }
     }
 }
