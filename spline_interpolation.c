@@ -16,6 +16,7 @@
 #define MICRO 0.0001                  // step of this algorithm
 #define EPSILON 0.002                 // difference between the values at which we consider them to be equal
 
+
 void greeting(){
     printf(" _____       _ _                                               \n");
     printf("/  ___|     | (_)                                              \n");
