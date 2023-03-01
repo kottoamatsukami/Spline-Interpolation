@@ -4,6 +4,7 @@ import os
 import matplotlib.pyplot as plt
 
 
+
 menu_carrier = int(input("1 Сплайн или 2 сплайна: "))
 if menu_carrier == 1:
     stock_filename = input("Файл с исходными точками: ")
