@@ -5,8 +5,16 @@
 #include "subfuncs.h"
 
 #define MAX_FILENAME_LENGTH 256
-#define EPSILON 1e-3
-#define DELTA 1e-3
+#define MAX_ITERATIONS 10000
+// Settings of gradient descent
+#define ALPHA 0.01                    // gradient coefficient
+#define SHEDULER_STEP 1000            // step after which ALPHA is reduced in SHEDULER_COEFFICIENT times
+#define SHEDULER_COEFFICIENT 2        // clearly
+#define OMEGA 999999                  // big number
+// Post gradient descent algorithm settings
+#define NEIGHBOUR 0.5                   // the vicinity of the parameter to find the intersection point
+#define MICRO 0.0001                  // step of this algorithm
+#define EPSILON 0.002                 // difference between the values at which we consider them to be equal
 
 void greeting(){
     printf(" _____       _ _                                               \n");
@@ -334,9 +342,17 @@ int main(){
                     break;
                 } else if (menu_carrier == 1) {
                     // Distance between splines
-                    double first_value_x, first_value_y, second_value_x, second_value_y, distance=9999999;
-                    for (double t = 0; t < first_n - 1; t = t + DELTA){
-                        first_value_x = calc_point_value(
+
+                    // Gradient Descent
+                    // F(t, c) = |f1t - f2c| + |g1t - g2c|
+                    double f1t, g1t, f2c, g2c;
+                    double t=first_n/2.0, c=second_n/2.0;
+                    double distance=OMEGA;
+                    double gradient_t, gradient_c;
+                    double function_value=0, last_function_value=OMEGA;
+                    double alpha = ALPHA;
+                    for (int i=1; i < MAX_ITERATIONS+1; i++){
+                        f1t = calc_point_value(
                                 t,
                                 first_n,
                                 first_index,
@@ -345,7 +361,7 @@ int main(){
                                 first_c_x,
                                 first_d_x
                         );
-                        first_value_y = calc_point_value(
+                        g1t = calc_point_value(
                                 t,
                                 first_n,
                                 first_index,
@@ -354,9 +370,101 @@ int main(){
                                 first_c_y,
                                 first_d_y
                         );
-                        for (double c = 0; c < second_n - 1; c = c + DELTA){
-                            second_value_x = calc_point_value(
-                                    c,
+                        f2c = calc_point_value(
+                                c,
+                                second_n,
+                                second_index,
+                                second_a_x,
+                                second_b_x,
+                                second_c_x,
+                                second_d_x
+                        );
+                        g2c = calc_point_value(
+                                c,
+                                second_n,
+                                second_index,
+                                second_a_y,
+                                second_b_y,
+                                second_c_y,
+                                second_d_y
+                        );
+
+                        gradient_t = (
+                                (f1t - f2c + g1t - g2c)
+                                /
+                                fabs(f1t - f2c)
+                                );
+
+                        gradient_c = (
+                                (f2c - f1t +  g2c - g1t)
+                                /
+                                fabs(g1t - g2c)
+                                );
+                        t += alpha * gradient_t;
+                        c += alpha * gradient_c;
+                        // Projection on set
+                        // t
+                        if (t < 0){
+                            t = 0;
+                        }
+                        else if (t > first_index[first_n-1]){
+                            t = first_index[first_n-1];
+                        }
+                        // c
+                        if (c < 0){
+                            c = 0;
+                        }
+                        else if (c > second_index[second_n-1]){
+                            c = second_index[second_n-1];
+                        }
+
+                        // Calc func value
+                        // F(t, c) = |f1t - f2c| + |g1t - g2c|
+                        function_value = (
+                                fabs(f1t - f2c)
+                                +
+                                fabs(g1t - g2c)
+                                         );
+                        // Hot stop
+                        if (function_value>last_function_value){
+                            printf("(f1(t):=%lf >< g1(t):=%lf)   (f2(t):=%lf >< g2(t):=%lf)\n", f1t, g1t, f2c, g2c);
+                            break;
+                        }
+                        printf("Iteration[%d]: t:=%lf c:=%lf function(t, c):=%lf ><Scheduler: alpha=%lf\n", i, t, c, function_value, alpha);
+
+
+                        // Scheduler
+                        if (i % SHEDULER_STEP == 0){
+                            alpha /= SHEDULER_COEFFICIENT;
+                        }
+
+
+                        last_function_value = function_value;
+                    }
+
+                    // Post gradient descent algorithm
+                    for (double new_t = fmax(0, t-NEIGHBOUR); new_t<fmin(first_index[first_n-1],t+NEIGHBOUR); new_t+=MICRO){
+                        f1t = calc_point_value(
+                                new_t,
+                                first_n,
+                                first_index,
+                                first_a_x,
+                                first_b_x,
+                                first_c_x,
+                                first_d_x
+                        );
+                        g1t = calc_point_value(
+                                new_t,
+                                first_n,
+                                first_index,
+                                first_a_y,
+                                first_b_y,
+                                first_c_y,
+                                first_d_y
+                        );
+                        for (double new_c = fmax(0, c-NEIGHBOUR); new_c<fmin(second_index[second_n-1],c+NEIGHBOUR); new_c+=MICRO){
+                            f2c = calc_point_value(
+                                    new_c,
                                     second_n,
                                     second_index,
                                     second_a_x,
@@ -364,9 +472,8 @@ int main(){
                                     second_c_x,
                                     second_d_x
                             );
-
-                            second_value_y = calc_point_value(
-                                    c,
+                            g2c = calc_point_value(
+                                    new_c,
                                     second_n,
                                     second_index,
                                     second_a_y,
@@ -377,22 +484,24 @@ int main(){
                             distance = fmin(
                                     distance,
                                     sqrt(
-                                            (first_value_x - second_value_x)*(first_value_x - second_value_x) +
-                                            (first_value_y - second_value_y)*(first_value_y - second_value_y)
-                                            )
-                                    );
-                            if (fabs(first_value_y - second_value_y) < EPSILON){
-                                if (fabs(first_value_x - second_value_x) < EPSILON){
+                                            (f1t - f2c)*(f1t - f2c) +
+                                            (g1t - g2c)*(g1t - g2c)
+                                    )
+                            );
+                            if (fabs(g1t - g2c) < EPSILON){
+                                if (fabs(f1t - f2c) < EPSILON){
                                     distance = 0;
-                                    printf("Intersection: %lf %lf -> (%lf %lf)  (%lf %lf)\n", t, c, first_value_x, first_value_y, second_value_x, second_value_y);
+                                    printf("Intersection: t:=%lf c:=%lf -> (%lf %lf)  (%lf %lf)\n", t, c, f1t, g1t, f2c, g2c);
                                     break;
                                 }
                             }
-                        if (distance == 0){
-                            break;
-                        }
+                            if (distance == 0){
+                                break;
+                            }
                         }
                     }
+
+
                     if (distance != 0){
                         printf("Splines do not overlap, min distance: %lf\n", distance);
                     }
