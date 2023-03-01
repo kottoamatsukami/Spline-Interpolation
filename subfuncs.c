@@ -1,5 +1,7 @@
 #include "subfuncs.h"
 #include <math.h>
+#include <stdio.h>
+
 
 void gauss_algorithm(int m, int n, double a[m][n], double x[n-1])
 {
@@ -117,6 +119,13 @@ void calc_coefficients(
     }
 }
 
+void print_array(int n, double arr[n])
+{
+    for (int i = 0; i < n; i++){
+        printf("%lf ", arr[i]);
+    }
+    printf("\n");
+}
 
 double calc_point_value(
         double x0,
@@ -132,6 +141,7 @@ double calc_point_value(
     for (int i = 0; i < n - 1; i++)
     {
         if ((x[i] <= x0) && (x0 <= x[i+1])){
+
             delta = (x0 - x[i]);
             value = a[i] * delta * delta * delta +
                     b[i] * delta * delta +
@@ -141,3 +151,4 @@ double calc_point_value(
         }
     }
 }
+
